@@ -15,12 +15,14 @@ import { ExplorerProgram } from "../explorer/ExplorerProgram"
 import { GrapherInterface } from "../grapher/core/GrapherInterface"
 import { serializeJSONForHTML } from "../clientUtils/serializers"
 import { GRAPHER_PAGE_BODY_CLASS } from "../grapher/core/GrapherConstants"
+import { ExplorerQueryParamSettings } from "../explorer/Explorer"
 
 interface ExplorerPageSettings {
     program: ExplorerProgram
     wpContent?: string
     grapherConfigs: GrapherInterface[]
     baseUrl: string
+    queryParamSettings?: ExplorerQueryParamSettings
 }
 
 const ExplorerContent = ({ content }: { content: string }) => {
@@ -45,7 +47,13 @@ const ExplorerContent = ({ content }: { content: string }) => {
 }
 
 export const ExplorerPage = (props: ExplorerPageSettings) => {
-    const { wpContent, program, grapherConfigs, baseUrl } = props
+    const {
+        wpContent,
+        program,
+        grapherConfigs,
+        baseUrl,
+        queryParamSettings,
+    } = props
     const {
         subNavId,
         subNavCurrentId,
@@ -64,12 +72,13 @@ export const ExplorerPage = (props: ExplorerPageSettings) => {
     const inlineJs = `const explorerProgram = ${serializeJSONForHTML(
         program.toJson(),
         EMBEDDED_EXPLORER_DELIMITER
-    )}
+    )};
 const grapherConfigs = ${serializeJSONForHTML(
         grapherConfigs,
         EMBEDDED_EXPLORER_GRAPHER_CONFIGS
-    )}
-window.Explorer.renderSingleExplorerOnExplorerPage(explorerProgram, grapherConfigs)`
+    )};
+const queryParamSettings = ${JSON.stringify(queryParamSettings)}
+window.Explorer.renderSingleExplorerOnExplorerPage(explorerProgram, grapherConfigs, queryParamSettings);`
 
     return (
         <html>

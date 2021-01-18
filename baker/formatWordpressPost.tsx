@@ -22,9 +22,9 @@ import { Footnote } from "../site/Footnote"
 import { LoadingIndicator } from "../grapher/loadingIndicator/LoadingIndicator"
 import { PROMINENT_LINK_CLASSNAME } from "../site/blocks/ProminentLink"
 import {
-    replaceLegacyGrapherIframesWithExplorerRedirectsInWordPressPost,
     legacyCovidDashboardSlug,
-} from "../explorerAdmin/legacyCovidExplorerRedirects"
+    legacyGrapherToCovidExplorerRedirectTable,
+} from "../urls/legacyCovidRedirects"
 import { countryProfileSpecs } from "../site/countryProfileProjects"
 import { formatGlossaryTerms } from "../site/formatGlossary"
 import { getMutableGlossary, glossary } from "../site/glossary"
@@ -40,6 +40,11 @@ import { SVG } from "mathjax-full/js/output/svg"
 import { liteAdaptor } from "mathjax-full/js/adaptors/liteAdaptor"
 import { RegisterHTMLHandler } from "mathjax-full/js/handlers/html"
 import { AllPackages } from "mathjax-full/js/input/tex/AllPackages"
+import { PATCH_QUERY_PARAM } from "../explorer/ExplorerConstants"
+import { omitUndefinedValues, urlToSlug } from "../clientUtils/Util"
+import { Patch } from "../patch/Patch"
+import { legacyQueryParamsToCurrentQueryParams } from "../grapher/core/GrapherInterface"
+import { queryParamsFromLegacyCovidExplorerQueryParams } from "../urls/legacyCovidQueryParams"
 
 const initMathJax = () => {
     const adaptor = liteAdaptor()
@@ -105,6 +110,41 @@ const formatLatex = async (
         return compiled[i]
     })
 }
+
+export const replaceLegacyGrapherIframesWithExplorerRedirectsInWordPressPost = (
+    cheerio: CheerioStatic,
+    PATCH_QUERY_PARAM: string
+) =>
+    cheerio("iframe")
+        .toArray()
+        .filter((el) => (el.attribs["src"] || "").match(/\/grapher\//))
+        .forEach((el) => {
+            const url = el.attribs["src"].trim()
+            const slug = urlToSlug(url)
+
+            const match = legacyGrapherToCovidExplorerRedirectTable.where({
+                slug,
+            }).firstRow
+
+            if (!match) return
+
+            const matchQueryStr = url.match(/\?([^#]*)/)
+            const chartQueryStr = matchQueryStr ? matchQueryStr[1] : ""
+            const patch = new Patch(
+                omitUndefinedValues(
+                    legacyQueryParamsToCurrentQueryParams(
+                        queryParamsFromLegacyCovidExplorerQueryParams(
+                            chartQueryStr,
+                            match.explorerQueryStr
+                        )
+                    )
+                )
+            )
+            // Replace Grapher iframe src with explorer src
+            el.attribs[
+                "src"
+            ] = `/explorers/${legacyCovidDashboardSlug}?${PATCH_QUERY_PARAM}=${patch.uriEncodedString}`
+        })
 
 export const formatWordpressPost = async (
     post: FullPost,
@@ -243,7 +283,10 @@ export const formatWordpressPost = async (
     }
 
     // Replace grapher iframes with explorer iframes. todo: remove this.
-    replaceLegacyGrapherIframesWithExplorerRedirectsInWordPressPost(cheerioEl)
+    replaceLegacyGrapherIframesWithExplorerRedirectsInWordPressPost(
+        cheerioEl,
+        PATCH_QUERY_PARAM
+    )
 
     // Replace grapher iframes with static previews
     const GRAPHER_PREVIEW_CLASS = "grapherPreview"

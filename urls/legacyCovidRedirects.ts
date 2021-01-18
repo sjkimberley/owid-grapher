@@ -1,11 +1,7 @@
-import { urlToSlug, mergeQueryStr } from "../clientUtils/Util"
+import { omitUndefinedValues, urlToSlug } from "../clientUtils/Util"
 import { CoreTable } from "../coreTable/CoreTable"
-import {
-    ExplorerProgram,
-    EXPLORER_FILE_SUFFIX,
-} from "../explorer/ExplorerProgram"
-import { GIT_CMS_DIR } from "../gitCms/GitCmsConstants"
-import { ExplorerAdminServer } from "./ExplorerAdminServer"
+import { queryParamsFromLegacyCovidExplorerQueryParams } from "./legacyCovidQueryParams"
+import { Patch } from "../patch/Patch"
 
 // Todo: remove this file eventually. Would server side redirects do it?
 // this runs only at bake/wordpress/dev time and is not a clientside file.
@@ -68,120 +64,8 @@ export const legacyGrapherToCovidExplorerRedirectTable = new CoreTable<
     RedirectRow
 >(redirectTableTsv)
 
-// In addition to the query strings above, the below ones are ones we need to redirect to the new Covid Explorer.
-// It is about 80 different ones, but it may just be like a 10 liner map function that takes old params and converts
-// Test case:
-//
-// https://ourworldindata.org/coronavirus-data-explorer?country=~FRA&cfrMetric=true
-//
-// should redirect to:
-//
-// https://staging.owid.cloud/admin/explorers/preview/coronavirus-data-explorer?patch=selection-is-France-and-Metric%20Radio-is-Case%20Fatality%20Rate
-//
-// Obviously the final details of the new link will change, but if we have tests and do strings as consts should be easy to finalize once we settle on the new URL details.
-
-const queryStringsToRedirect = `casesMetric=true&interval=daily&aligned=true&perCapita=true&smoothing=0
-casesMetric=true&interval=daily&perCapita=true&smoothing=0
-casesMetric=true&interval=daily&aligned=true&smoothing=0
-casesMetric=true&interval=daily&smoothing=0
-casesMetric=true&interval=weekly&smoothing=7
-casesMetric=true&interval=total&aligned=true&perCapita=true&smoothing=0
-casesMetric=true&interval=total&perCapita=true&smoothing=0
-casesMetric=true&interval=total&aligned=true&smoothing=0
-casesMetric=true&interval=total&smoothing=0
-casesMetric=true&interval=smoothed&aligned=true&perCapita=true&smoothing=7
-casesMetric=true&interval=smoothed&perCapita=true&smoothing=7
-casesMetric=true&interval=smoothed&aligned=true&smoothing=7
-casesMetric=true&interval=smoothed&smoothing=7
-casesMetric=true&interval=biweekly&smoothing=14
-casesMetric=true&interval=weeklyChange&smoothing=7
-casesMetric=true&interval=biweeklyChange&smoothing=14
-deathsMetric=true&interval=daily&aligned=true&perCapita=true&smoothing=0
-deathsMetric=true&interval=daily&perCapita=true&smoothing=0
-deathsMetric=true&interval=daily&aligned=true&smoothing=0
-deathsMetric=true&interval=daily&smoothing=0
-deathsMetric=true&interval=weekly&smoothing=7
-deathsMetric=true&interval=total&aligned=true&perCapita=true&smoothing=0
-deathsMetric=true&interval=total&perCapita=true&smoothing=0
-deathsMetric=true&interval=total&aligned=true&smoothing=0
-deathsMetric=true&interval=total&smoothing=0
-deathsMetric=true&interval=smoothed&aligned=true&perCapita=true&smoothing=7
-deathsMetric=true&interval=smoothed&perCapita=true&smoothing=7
-deathsMetric=true&interval=smoothed&aligned=true&smoothing=7
-deathsMetric=true&interval=smoothed&smoothing=7
-deathsMetric=true&interval=biweekly&smoothing=14
-deathsMetric=true&interval=weeklyChange&smoothing=7
-deathsMetric=true&interval=biweeklyChange&smoothing=14
-cfrMetric=true&interval=total&smoothing=0
-testsMetric=true&interval=daily&aligned=true&perCapita=true&smoothing=0
-testsMetric=true&interval=daily&perCapita=true&smoothing=0
-testsMetric=true&interval=daily&aligned=true&smoothing=0
-testsMetric=true&interval=daily&smoothing=0
-testsMetric=true&interval=total&aligned=true&perCapita=true&smoothing=0
-testsMetric=true&interval=total&perCapita=true&smoothing=0
-testsMetric=true&interval=total&aligned=true&smoothing=0
-testsMetric=true&interval=total&smoothing=0
-testsMetric=true&interval=smoothed&aligned=true&perCapita=true&smoothing=7
-testsMetric=true&interval=smoothed&perCapita=true&smoothing=7
-testsMetric=true&interval=smoothed&aligned=true&smoothing=7
-testsMetric=true&interval=smoothed&smoothing=7
-testsPerCaseMetric=true&interval=smoothed&smoothing=7
-testsPerCaseMetric=true&interval=total&smoothing=0
-positiveTestRate=true&interval=smoothed&smoothing=7
-positiveTestRate=true&interval=total&smoothing=0`
-
-let cached: ExplorerProgram
-// todo: remove
-export const getLegacyCovidExplorerAsExplorerProgramForSlug = async (
-    slug: string
-) => {
-    const row = legacyGrapherToCovidExplorerRedirectTable.where({
-        slug,
-    }).firstRow
-    if (!row) return undefined
-
-    if (!cached) {
-        const explorerAdminServer = new ExplorerAdminServer(GIT_CMS_DIR, "")
-        cached = await explorerAdminServer.getExplorerFromFile(
-            legacyCovidDashboardSlug + EXPLORER_FILE_SUFFIX
-        )
-    }
-
-    // todo: use querystring
-    return cached
-}
-
 // todo: remove
 export const hasLegacyGrapherToCovidExplorerRedirect = (grapherId: number) =>
     legacyGrapherToCovidExplorerRedirectTable
         .get("id")
         .uniqValuesAsSet.has(grapherId)
-
-// todo: remove
-export const replaceLegacyGrapherIframesWithExplorerRedirectsInWordPressPost = (
-    cheerio: CheerioStatic
-) =>
-    cheerio("iframe")
-        .toArray()
-        .filter((el) => (el.attribs["src"] || "").match(/\/grapher\//))
-        .forEach((el) => {
-            const url = el.attribs["src"].trim()
-            const slug = urlToSlug(url)
-
-            const match = legacyGrapherToCovidExplorerRedirectTable.where({
-                slug,
-            }).firstRow
-
-            if (!match) return
-
-            const matchQueryStr = url.match(/\?([^#]*)/)
-            const chartQueryStr = matchQueryStr ? matchQueryStr[1] : ""
-            const queryStr = mergeQueryStr(
-                match.explorerQueryStr,
-                chartQueryStr
-            )
-            // Replace Grapher iframe src with explorer src
-            el.attribs[
-                "src"
-            ] = `/explorers/${legacyCovidDashboardSlug}${queryStr}`
-        })

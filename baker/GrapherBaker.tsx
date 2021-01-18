@@ -20,7 +20,7 @@ import {
 import ProgressBar = require("progress")
 import * as db from "../db/db"
 import * as glob from "glob"
-import { hasLegacyGrapherToCovidExplorerRedirect } from "../explorerAdmin/legacyCovidExplorerRedirects"
+import { hasLegacyGrapherToCovidExplorerRedirect } from "../urls/legacyCovidRedirects"
 import { JsonError } from "../clientUtils/owidTypes"
 import { RelatedArticles } from "../site/RelatedArticles/RelatedArticles"
 

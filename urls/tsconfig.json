@@ -1,15 +1,12 @@
 {
     "extends": "../devTools/tsconfigs/tsconfig.base.json",
     "compilerOptions": {
-        "outDir": "../itsJustJavascript/explorer",
+        "outDir": "../itsJustJavascript/urls",
         "rootDir": "."
     },
     "references": [
         { "path": "../clientUtils" },
-        { "path": "../grapher" },
-        { "path": "../gridLang" },
         { "path": "../coreTable" },
-        { "path": "../patch" },
-        { "path": "../urls" }
+        { "path": "../patch" }
     ]
 }

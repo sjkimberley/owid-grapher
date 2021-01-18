@@ -39,10 +39,7 @@ import { bakeCountries } from "../baker/countryProfiles"
 import { countries } from "../clientUtils/countries"
 import { execWrapper } from "../db/execWrapper"
 import { log } from "./slackLog"
-import {
-    getLegacyCovidExplorerAsExplorerProgramForSlug,
-    legacyGrapherToCovidExplorerRedirectTable,
-} from "../explorerAdmin/legacyCovidExplorerRedirects"
+import { legacyGrapherToCovidExplorerRedirectTable } from "../urls/legacyCovidRedirects"
 import { countryProfileSpecs } from "../site/countryProfileProjects"
 import { ExplorerAdminServer } from "../explorerAdmin/ExplorerAdminServer"
 import { getRedirects } from "./redirects"
@@ -52,6 +49,7 @@ import { bakeEmbedSnippet } from "../site/webpackUtils"
 import { formatPost } from "./formatWordpressPost"
 import { FullPost } from "../clientUtils/owidTypes"
 import { GIT_CMS_DIR } from "../gitCms/GitCmsConstants"
+import { getLegacyCovidExplorerAsExplorerProgramForSlug } from "./replaceLegacyCovidExplorer"
 
 export class SiteBaker {
     private grapherExports!: GrapherExports

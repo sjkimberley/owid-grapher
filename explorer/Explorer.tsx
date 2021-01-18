@@ -52,10 +52,15 @@ import { ColumnTypeNames } from "../coreTable/CoreColumnDef"
 import { BlankOwidTable, OwidTable } from "../coreTable/OwidTable"
 import { GlobalEntityRegistry } from "../grapher/controls/globalEntityControl/GlobalEntityRegistry"
 import { Patch } from "../patch/Patch"
-import { setWindowQueryStr, strToQueryParams } from "../clientUtils/url"
+import {
+    QueryParams,
+    setWindowQueryStr,
+    strToQueryParams,
+} from "../clientUtils/url"
 import { BAKED_BASE_URL } from "../settings/clientSettings"
+import { queryParamsFromLegacyCovidExplorerQueryParams } from "../urls/legacyCovidQueryParams"
 
-interface ExplorerProps extends SerializedGridProgram {
+export interface ExplorerProps extends SerializedGridProgram {
     grapherConfigs?: GrapherInterface[]
     uriEncodedPatch?: string
     isEmbeddedInAnOwidPage?: boolean
@@ -92,6 +97,29 @@ const renderLivePreviewVersion = (props: ExplorerProps) => {
     }, 1000)
 }
 
+export interface ExplorerQueryParamSettings {
+    type: "legacyCovidExplorer" | "gridExplorer"
+    base?: string
+}
+
+const queryParamSettingsDefaults: ExplorerQueryParamSettings = {
+    type: "gridExplorer",
+}
+
+const getQueryParams = (
+    queryString: string,
+    queryParamSettingsOverrides?: ExplorerQueryParamSettings
+): QueryParams => {
+    const { type, base } = {
+        ...queryParamSettingsDefaults,
+        ...queryParamSettingsOverrides,
+    }
+    if (type === "legacyCovidExplorer") {
+        return queryParamsFromLegacyCovidExplorerQueryParams(queryString, base)
+    }
+    return strToQueryParams(queryString)
+}
+
 @observer
 export class Explorer
     extends React.Component<ExplorerProps>
@@ -99,7 +127,8 @@ export class Explorer
     // caution: do a ctrl+f to find untyped usages
     static renderSingleExplorerOnExplorerPage(
         program: ExplorerProps,
-        grapherConfigs: GrapherInterface[]
+        grapherConfigs: GrapherInterface[],
+        queryParamSettings?: ExplorerQueryParamSettings
     ) {
         const props: ExplorerProps = {
             ...program,
@@ -113,12 +142,15 @@ export class Explorer
             return
         }
 
+        const queryParams = getQueryParams(
+            window.location.search,
+            queryParamSettings
+        )
+
         ReactDOM.render(
             <Explorer
                 {...props}
-                uriEncodedPatch={
-                    strToQueryParams(window.location.search)[PATCH_QUERY_PARAM]
-                }
+                uriEncodedPatch={queryParams[PATCH_QUERY_PARAM]}
             />,
             document.getElementById(ExplorerContainerId)
         )
